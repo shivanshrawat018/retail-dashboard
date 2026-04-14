@@ -10,7 +10,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 st.set_page_config(page_title="Smart Dashboard", layout="wide")
 
 # =====================================================
-# 🔐 AUTH SYSTEM
+# 🔐 AUTH SYSTEM (FINAL FIXED)
 # =====================================================
 USER_FILE = "users.csv"
 SESSION_TIMEOUT = 900
@@ -27,8 +27,10 @@ def load_users():
 def save_user(username, password, role="user"):
     users = load_users()
     hashed_pw = hash_password(password)
+
     new_user = pd.DataFrame([[username, hashed_pw, role]],
                             columns=["username", "password", "role"])
+
     users = pd.concat([users, new_user], ignore_index=True)
     users.to_csv(USER_FILE, index=False)
 
@@ -60,26 +62,20 @@ def login():
     password = st.text_input("Password", type="password")
     remember = st.checkbox("Remember Me")
 
+    # LOGIN
     if option == "Login":
         if st.button("Login"):
 
             with st.spinner("Verifying login..."):
                 users = load_users()
-                user = users[users["username"] == username]
 
-                if not user.empty:
-                    stored_pw = user.iloc[0]["password"]
+                if username in users["username"].values:
+                    user = users[users["username"] == username].iloc[0]
 
-                    # Convert old plain password → hashed
-                    if stored_pw == password:
-                        users.loc[users["username"] == username, "password"] = hash_password(password)
-                        users.to_csv(USER_FILE, index=False)
-                        stored_pw = hash_password(password)
-
-                    if stored_pw == hash_password(password):
+                    if user["password"] == hash_password(password):
                         st.session_state["logged_in"] = True
                         st.session_state["username"] = username
-                        st.session_state["role"] = user.iloc[0]["role"]
+                        st.session_state["role"] = user["role"]
                         st.session_state["login_time"] = time.time()
 
                         if remember:
@@ -89,10 +85,11 @@ def login():
                         time.sleep(1)
                         st.rerun()
                     else:
-                        st.error("Invalid credentials")
+                        st.error("Incorrect password")
                 else:
                     st.error("User not found")
 
+    # SIGNUP
     else:
         if st.button("Create Account"):
             users = load_users()
@@ -102,6 +99,7 @@ def login():
             else:
                 save_user(username, password)
                 st.success("Account created successfully")
+
                 st.session_state["auth_mode"] = "Login"
                 time.sleep(1)
                 st.rerun()
